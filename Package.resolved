@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "MIDIKit",
+        "repositoryURL": "https://github.com/orchetect/MIDIKit.git",
+        "state": {
+          "branch": null,
+          "revision": "b11d776fff1a06c86285230fc38a7f9b132db25e",
+          "version": "0.9.9"
+        }
+      },
+      {
+        "package": "TimecodeKit",
+        "repositoryURL": "https://github.com/orchetect/TimecodeKit",
+        "state": {
+          "branch": null,
+          "revision": "1014b5723a7eaa93eeb2ea2f52dfd9ea6eb6be0d",
+          "version": "2.3.3"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

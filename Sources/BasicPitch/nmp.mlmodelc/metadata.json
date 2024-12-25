@@ -1,0 +1,99 @@
+[
+  {
+    "metadataOutputVersion" : "3.0",
+    "storagePrecision" : "Float32",
+    "outputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 172 × 264)",
+        "shortDescription" : "",
+        "shape" : "[1, 172, 264]",
+        "name" : "Identity",
+        "type" : "MultiArray"
+      },
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 172 × 88)",
+        "shortDescription" : "",
+        "shape" : "[1, 172, 88]",
+        "name" : "Identity_1",
+        "type" : "MultiArray"
+      },
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 172 × 88)",
+        "shortDescription" : "",
+        "shape" : "[1, 172, 88]",
+        "name" : "Identity_2",
+        "type" : "MultiArray"
+      }
+    ],
+    "modelParameters" : [
+
+    ],
+    "specificationVersion" : 6,
+    "mlProgramOperationTypeHistogram" : {
+      "Transpose" : 8,
+      "ReduceMax" : 1,
+      "Sub" : 1,
+      "Sigmoid" : 3,
+      "Reshape" : 6,
+      "Concat" : 3,
+      "Add" : 1,
+      "Sqrt" : 1,
+      "RealDiv" : 1,
+      "Pow" : 1,
+      "Pad" : 24,
+      "Relu" : 3,
+      "ExpandDims" : 3,
+      "Conv" : 32,
+      "BatchNorm" : 1,
+      "Log" : 1,
+      "SliceByIndex" : 9,
+      "Stack" : 9,
+      "ReduceSum" : 1,
+      "Mul" : 3,
+      "ReduceMin" : 1
+    },
+    "computePrecision" : "Mixed (Float32, Int32)",
+    "isUpdatable" : "0",
+    "stateSchema" : [
+
+    ],
+    "availability" : {
+      "macOS" : "12.0",
+      "tvOS" : "15.0",
+      "visionOS" : "1.0",
+      "watchOS" : "8.0",
+      "iOS" : "15.0",
+      "macCatalyst" : "15.0"
+    },
+    "modelType" : {
+      "name" : "MLModelType_mlProgram"
+    },
+    "userDefinedMetadata" : {
+      "com.github.apple.coremltools.version" : "7.0",
+      "com.github.apple.coremltools.source" : "tensorflow==2.12.0"
+    },
+    "inputSchema" : [
+      {
+        "hasShapeFlexibility" : "0",
+        "isOptional" : "0",
+        "dataType" : "Float32",
+        "formattedType" : "MultiArray (Float32 1 × 43844 × 1)",
+        "shortDescription" : "",
+        "shape" : "[1, 43844, 1]",
+        "name" : "input_2",
+        "type" : "MultiArray"
+      }
+    ],
+    "generatedClassName" : "nmp",
+    "method" : "predict"
+  }
+]
