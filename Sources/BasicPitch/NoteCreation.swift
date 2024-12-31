@@ -544,18 +544,18 @@ private func notesToMidi(notes: [NotePitchBend], multiplePitchBends: Bool, midiT
 
 public class NoteCreation: @unchecked Sendable {
     public struct Opt {
-        public let onsetThreshold: Float
-        public let frameThreshold: Float
-        public let minNoteLength: Float
-        public let minFreq: Float?
-        public let maxFreq: Float?
-        public let midiTempo: Int
-        public let midiProgram: Int
-        public let inferOnsets: Bool
-        public let includePitchBends: Bool
-        public let multiplePitchBends: Bool
-        public let melodiaTrick: Bool
-        public let energyThreshold: Int
+        public var onsetThreshold: Float
+        public var frameThreshold: Float
+        public var minNoteLength: Float
+        public var minFreq: Float?
+        public var maxFreq: Float?
+        public var midiTempo: Int
+        public var midiProgram: Int
+        public var inferOnsets: Bool
+        public var includePitchBends: Bool
+        public var multiplePitchBends: Bool
+        public var melodiaTrick: Bool
+        public var energyThreshold: Int
 
         public init(
             onsetThreshold: Float = 0.5,
