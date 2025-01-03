@@ -544,23 +544,23 @@ private func notesToMidi(notes: [NotePitchBend], multiplePitchBends: Bool, midiT
 
 public class NoteCreation: @unchecked Sendable {
     public struct Opt {
-        public var onsetThreshold: Float
-        public var frameThreshold: Float
-        public var minNoteLength: Float
-        public var minFreq: Float?
-        public var maxFreq: Float?
-        public var midiTempo: Int
-        public var midiProgram: Int
+        public var onsetThreshold: Float  // 分割 - 合并 音符的力度，取值范围 [0.05, 0.95]
+        public var frameThreshold: Float  // 更多 - 更少 由模型推理生成音符的置信度，取值范围 [0.05, 0.95]
+        public var minNoteLength: Int  // 最短音符时长 [3, 50] ms
+        public var minFreq: Float?  // 音调下限，单位 Hz [0, 2000]
+        public var maxFreq: Float?  // 音调上限，单位 Hz [40, 3000]
+        public var midiTempo: Int  // midi 文件使用的默认拍速 [24, 224]
+        public var midiProgram: Int  // midi 文件使用的默认乐器号
         public var inferOnsets: Bool
-        public var includePitchBends: Bool
-        public var multiplePitchBends: Bool
-        public var melodiaTrick: Bool
-        public var energyThreshold: Int
+        public var includePitchBends: Bool  // 弯音检测
+        public var multiplePitchBends: Bool  // 每个 pitch 一个单独的音轨
+        public var melodiaTrick: Bool  // 泛音检测
+        public var energyThreshold: Int  // 能量限制
 
         public init(
             onsetThreshold: Float = 0.5,
-            frameThreshold: Float = 0.5,
-            minNoteLength: Float = 127.7,
+            frameThreshold: Float = 0.3,
+            minNoteLength: Int = 11,
             minFreq: Float? = nil,
             maxFreq: Float? = nil,
             midiTempo: Int = 120,
@@ -596,18 +596,13 @@ public class NoteCreation: @unchecked Sendable {
         self.contours = contours
     }
 
-    public func genMidiFileData(_ opt: Opt = Opt()) throws -> Data {
-        let minNoteLen = Int(
-            (Float(opt.minNoteLength) / 1000 * Float(Constants.audioSampleRate) / Float(Constants.fftHop))
-                .rounded()
-        )
-
+    public func genMidiFile(_ opt: Opt = Opt()) throws -> MIDIFile {
         let estimatedNotes = outputToNotesPolyphonic(
             frames: notes,
             onsets: onsets,
             onsetThresh: opt.onsetThreshold,
             frameThresh: opt.frameThreshold,
-            minNoteLen: minNoteLen,
+            minNoteLen: opt.minNoteLength,
             inferOnsets: opt.inferOnsets,
             maxFreq: opt.maxFreq,
             minFreq: opt.minFreq,
@@ -629,12 +624,11 @@ public class NoteCreation: @unchecked Sendable {
             return NotePitchBend(
                 startTime: times[v.0.0], endTime: times[v.0.1], pitch: v.0.2, amplitude: v.0.3, pitchBend: v.1)
         }
-        let mid = notesToMidi(
+        return notesToMidi(
             notes: notePitchBends,
             multiplePitchBends: opt.multiplePitchBends,
             midiTempo: opt.midiTempo,
             midiProgram: opt.midiProgram
         )
-        return try mid.rawData()
     }
 }
