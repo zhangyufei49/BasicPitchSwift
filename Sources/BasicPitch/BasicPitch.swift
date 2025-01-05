@@ -115,15 +115,16 @@ private struct ModelInputIterator: IteratorProtocol {
         input.withUnsafeMutableBufferPointer(ofType: Float.self) { dst, _ in
             // 当 i < 0 时，需要补0
             var offset = 0
-            if i < 0 {
+            if self.i < 0 {
                 offset = -self.i
                 memset(dst.baseAddress!, 0, offset * MemoryLayout<Float>.size)
             }
             // 复制音频采样数据
-            let n = min(limit - offset, totalFrames - i)
+            let j = max(0, self.i)
+            let n = min(limit - offset, totalFrames - j)
             memcpy(
                 dst.baseAddress!.advanced(by: offset),
-                audioFrames.baseAddress!.advanced(by: i),
+                audioFrames.baseAddress!.advanced(by: j),
                 n * MemoryLayout<Float>.size
             )
             // 对于最后一次预测的输入数据不足的情况进行补 0
