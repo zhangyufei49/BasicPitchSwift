@@ -543,7 +543,7 @@ private func notesToMidi(notes: [NotePitchBend], multiplePitchBends: Bool, midiT
 }
 
 public class NoteCreation: @unchecked Sendable {
-    public struct Opt {
+    public struct Opt: Equatable {
         public var onsetThreshold: Float  // 分割 - 合并 音符的力度，取值范围 [0.05, 0.95]
         public var frameThreshold: Float  // 更多 - 更少 由模型推理生成音符的置信度，取值范围 [0.05, 0.95]
         public var minNoteLength: Int  // 最短音符时长 [3, 50] ms
