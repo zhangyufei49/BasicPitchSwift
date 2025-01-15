@@ -59,39 +59,39 @@ private func constrainFrequency(onsets: MLMultiArray, frames: MLMultiArray, maxF
     MLMultiArray
 ) {
     if maxFreq != nil {
-        let maxFreqIdx = hzToMidi(maxFreq!) - Constants.midiOffset
-        var len = vDSP_Length(onsets.shape[0].intValue)
-        var limit = onsets.shape[1].intValue
-        onsets.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
-            for i in 0..<limit {
-                vDSP_vclr(ptr.baseAddress!.advanced(by: maxFreqIdx + i), strides[0], len)
+        let limitMax: (_ arr: MLMultiArray, _ pitch: Int) -> Void = { arr, pitch in
+            var len = vDSP_Length(arr.shape[0].intValue)
+            var limit = arr.shape[1].intValue
+            if pitch <= limit {
+                arr.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
+                    for i in pitch..<limit {
+                        vDSP_vclr(ptr.baseAddress!.advanced(by: i), strides[0], len)
+                    }
+                }
             }
         }
 
-        len = vDSP_Length(frames.shape[0].intValue)
-        limit = frames.shape[1].intValue
-        frames.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
-            for i in 0..<limit {
-                vDSP_vclr(ptr.baseAddress!.advanced(by: maxFreqIdx + i), strides[0], len)
-            }
-        }
+        let pitch = hzToMidi(maxFreq!) - Constants.midiOffset
+        limitMax(onsets, pitch)
+        limitMax(frames, pitch)
     }
 
     if minFreq != nil {
-        let minFreqIdx = hzToMidi(minFreq!) - Constants.midiOffset
-        var len = vDSP_Length(onsets.shape[0].intValue)
-        onsets.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
-            for i in 0..<minFreqIdx {
-                vDSP_vclr(ptr.baseAddress!.advanced(by: i), strides[0], len)
+        let limitMin: (_ arr: MLMultiArray, _ pitch: Int) -> Void = { arr, pitch in
+            var len = vDSP_Length(arr.shape[0].intValue)
+            var limit = arr.shape[1].intValue
+            if pitch >= 0 {
+                arr.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
+                    for i in 0..<pitch {
+                        vDSP_vclr(ptr.baseAddress!.advanced(by: i), strides[0], len)
+                    }
+                }
             }
         }
 
-        len = vDSP_Length(frames.shape[0].intValue)
-        frames.withUnsafeMutableBufferPointer(ofType: Float.self) { ptr, strides in
-            for i in 0..<minFreqIdx {
-                vDSP_vclr(ptr.baseAddress!.advanced(by: i), strides[0], len)
-            }
-        }
+        let pitch = hzToMidi(minFreq!) - Constants.midiOffset
+        limitMin(onsets, pitch)
+        limitMin(frames, pitch)
     }
     return (onsets, frames)
 }
