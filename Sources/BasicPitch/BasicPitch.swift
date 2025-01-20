@@ -46,8 +46,20 @@ extension BasicPitch {
     }
 
     public static func predict(_ audioFile: URL, _ onProgressChanged: OnProgressChanged? = nil) throws -> NoteCreation {
-        // 读取文件并进行重采样
-        let audio = resample(try! loadAudio(audioFile, onProgressChanged), onProgressChanged)
+        let f = try! AVAudioFile(forReading: audioFile)
+        var audio: AVAudioPCMBuffer
+        if f.processingFormat == BasicPitch.targetAudioFormat {
+            // 如果格式符合预期，直接全部读取
+            audio = AVAudioPCMBuffer(pcmFormat: f.processingFormat, frameCapacity: AVAudioFrameCount(f.length))!
+            onProgressChanged?(.readingAudio, 0.0)
+            try! f.read(into: audio, frameCount: audio.frameCapacity)
+            onProgressChanged?(.readingAudio, 1.0)
+            onProgressChanged?(.resampleAudio, 0.0)
+            onProgressChanged?(.resampleAudio, 1.0)
+        } else {
+            // 读取文件并进行重采样
+            audio = resample(try! loadAudio(f, onProgressChanged), onProgressChanged)
+        }
 
         // 进行预测
         return try! BasicPitch.predict(audio, onProgressChanged)
@@ -220,11 +232,10 @@ private func resample(_ buf: AVAudioPCMBuffer, _ onProgressChanged: BasicPitch.O
     return result
 }
 
-private func loadAudio(_ audioFile: URL, _ onProgressChanged: BasicPitch.OnProgressChanged? = nil) throws
+private func loadAudio(_ f: AVAudioFile, _ onProgressChanged: BasicPitch.OnProgressChanged? = nil) throws
     -> AVAudioPCMBuffer
 {
     onProgressChanged?(.readingAudio, 0.0)
-    let f = try! AVAudioFile(forReading: audioFile)
     let fmt = f.processingFormat
     let targetFmt = AVAudioFormat(
         commonFormat: fmt.commonFormat,
