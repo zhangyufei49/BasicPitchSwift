@@ -586,9 +586,9 @@ public class NoteCreation: @unchecked Sendable {
         }
     }
 
-    let onsets: MLMultiArray
-    let notes: MLMultiArray
-    let contours: MLMultiArray
+    public let onsets: MLMultiArray
+    public let notes: MLMultiArray
+    public let contours: MLMultiArray
 
     public init(onsets: MLMultiArray, notes: MLMultiArray, contours: MLMultiArray) {
         self.onsets = onsets
