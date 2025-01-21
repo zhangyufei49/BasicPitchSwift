@@ -181,10 +181,11 @@ private struct ModelOutput {
         var size: Int = 0
         ret.withUnsafeMutableBytes({ dst, strides in
             for i in 0..<arr.count {
+                let srcStep = arr[i].strides[1].intValue
                 arr[i].withUnsafeBytes({ src in
                     for j in nOlap..<jLimit {
                         let dp = dst.baseAddress!.advanced(by: size * MemoryLayout<Float>.size * strides[0])
-                        let sp = src.baseAddress!.advanced(by: j * MemoryLayout<Float>.size * strides[0])
+                        let sp = src.baseAddress!.advanced(by: j * MemoryLayout<Float>.size * srcStep)
                         memcpy(dp, sp, MemoryLayout<Float>.size * arr[0].shape[2].intValue)
                         size += 1
                         if size == shape0 {
