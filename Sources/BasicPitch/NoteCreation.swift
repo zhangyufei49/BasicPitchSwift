@@ -411,6 +411,9 @@ private func getPitchBends(contours: MLMultiArray, noteEvents: [Note], nBinsTole
 }
 
 private func dropOpverlappingPitchBends(_ notes: [NotePitchBend]) -> [NotePitchBend] {
+    if notes.isEmpty {
+        return notes
+    }
     var ret = notes.sorted()
     for i in 0..<(ret.count - 1) {
         for j in (i + 1)..<ret.count {
