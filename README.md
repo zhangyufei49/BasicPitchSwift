@@ -24,11 +24,14 @@ private func processAudio(_ audioFile: URL) async -> NoteCreation {
 
 // 保存 MIDI 文件
 Task {
-    let noteCreation = await processAudio(audioFileForReading)
+    let noteConverter = await processAudio(audioFileForReading)
 
-    // genMidiFileData 有很多可配置的参数，这里是默认操作
-    if let data = try? noteCreation?.genMidiFileData() {
-        try? data.write(to: midiFileForWriting)
+    // convert 有很多可配置的参数，这里是默认操作
+    if let notes = try? noteConverter?.convert.() {
+        if let writer = MidiWriter(notes) {
+            let data = writer.write()
+            try? data.write(to: midiFileForWriting)
+        }
     }
 }
 ```

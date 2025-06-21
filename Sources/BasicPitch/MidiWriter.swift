@@ -45,7 +45,7 @@ public actor MidiWriter {
         public var midiTempo: Int  // midi 文件使用的默认拍速 [24, 224]
         public var midiProgram: Int  // midi 文件使用的默认乐器号
         public var multiplePitchBends: Bool  // 每个 pitch 一个单独的音轨
-        
+
         public init(
             midiTempo: Int = 120,
             midiProgram: Int = 4,
@@ -56,14 +56,14 @@ public actor MidiWriter {
             self.multiplePitchBends = multiplePitchBends
         }
     }
-    
+
     public let notes: [Note]
-    
+
     public init(notes: [Note]) {
         self.notes = notes;
     }
 
-    public func Write(_ opt: Opt = Opt()) -> MIDIFile {
+    public func write(_ opt: Opt = Opt()) -> MIDIFile {
         let notes = opt.multiplePitchBends ? self.notes : dropOpverlappingPitchBends(self.notes)
 
         let tm = MidiTempoMap(bpm: UInt(opt.midiTempo))

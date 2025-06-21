@@ -25,9 +25,12 @@ private func processAudio(_ audioFile: URL) async -> NoteCreation {
 Task {
     let noteCreation = await processAudio(audioFileForReading)
 
-    // genMidiFileData(_ opt:) has many options, this is the default behavior
-    if let data = try? noteCreation?.genMidiFileData() {
-        try? data.write(to: midiFileForWriting)
+    // convert(_ opt:) has many options, this is the default behavior
+    if let notes = try? noteConverter?.convert.() {
+        if let writer = MidiWriter(notes) {
+            let data = writer.write()
+            try? data.write(to: midiFileForWriting)
+        }
     }
 }
 ```
