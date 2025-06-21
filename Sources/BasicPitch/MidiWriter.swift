@@ -88,9 +88,9 @@ public actor MidiWriter {
                 tracks[trackIdx] = [
                     (0, .programChange(program: defaultProgram, channel: channel))
                 ]
+            } else {
+                channel = tracks[trackIdx]!.first!.1.channel!
             }
-
-            channel = UInt4(channelCounter % 16)
 
             // note on/ note off
             vel = UInt7((127 * n.amplitude).rounded())
