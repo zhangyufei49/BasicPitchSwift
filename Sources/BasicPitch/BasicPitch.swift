@@ -45,7 +45,7 @@ extension BasicPitch {
         )!
     }
 
-    public static func predict(_ audioFile: URL, _ onProgressChanged: OnProgressChanged? = nil) throws -> NoteCreation {
+    public static func predict(_ audioFile: URL, _ onProgressChanged: OnProgressChanged? = nil) throws -> NotesConverter {
         let f = try! AVAudioFile(forReading: audioFile)
         var audio: AVAudioPCMBuffer
         if f.processingFormat == BasicPitch.targetAudioFormat {
@@ -66,7 +66,7 @@ extension BasicPitch {
     }
 
     public static func predict(_ audio: AVAudioPCMBuffer, _ onProgressChanged: OnProgressChanged? = nil) throws
-        -> NoteCreation
+        -> NotesConverter
     {
         if audio.format != targetAudioFormat {
             throw BasicPitchError.invalidAudioFormat
@@ -93,7 +93,7 @@ extension BasicPitch {
         let (notes, onsets, contours) = modelOutput.unwrapped(Float(audio.frameLength))
         onProgressChanged?(ProgressName.prediction, 1.0)
 
-        return NoteCreation(onsets: onsets, notes: notes, contours: contours)
+        return NotesConverter(onsets: onsets, notes: notes, contours: contours)
     }
 
 }

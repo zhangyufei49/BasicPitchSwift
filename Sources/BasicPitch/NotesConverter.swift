@@ -1,5 +1,5 @@
 //
-//  NoteCreation.swift
+//  NotesConverter.swift
 //  ap
 //
 //  Created by 张宇飞 on 2024/11/22.
@@ -7,44 +7,8 @@
 
 import Accelerate
 import CoreML
-import MIDIKitSMF
 
-private typealias Note = (Int, Int, Int, Float)
-
-private typealias PitchBend = [Float]
-
-private struct NotePitchBend {
-    let startTime: Float
-    let endTime: Float
-    let pitch: Int
-    let amplitude: Float
-    var pitchBend: PitchBend?
-}
-
-extension NotePitchBend: Comparable {
-    static func < (lhs: NotePitchBend, rhs: NotePitchBend) -> Bool {
-        if lhs.startTime != rhs.startTime {
-            return lhs.startTime < rhs.startTime
-        }
-
-        if lhs.endTime != rhs.endTime {
-            return lhs.endTime < rhs.endTime
-        }
-
-        if lhs.pitch != rhs.pitch {
-            return lhs.pitch < rhs.pitch
-        }
-
-        if lhs.amplitude != rhs.amplitude {
-            return lhs.amplitude < rhs.amplitude
-        }
-
-        let l = (lhs.pitchBend != nil) ? lhs.pitchBend!.count : -1
-
-        let r = (rhs.pitchBend != nil) ? rhs.pitchBend!.count : -1
-        return l <= r
-    }
-}
+private typealias InnerNote = (Int, Int, Int, Float)
 
 private func hzToMidi(_ freq: Float) -> Int {
     return Int((12 * (log2(freq) - log2(440.0)) + 69).rounded())
@@ -179,7 +143,7 @@ private func outputToNotesPolyphonic(
     frames: MLMultiArray, onsets: MLMultiArray, onsetThresh: Float, frameThresh: Float, minNoteLen: Int,
     inferOnsets: Bool, maxFreq: Float?, minFreq: Float?,
     melodiaTrick: Bool, energyTol: Int
-) -> [Note] {
+) -> [InnerNote] {
     let nFrames = frames.shape[0].intValue
     var (onsets, frames) = constrainFrequency(onsets: onsets, frames: frames, maxFreq: maxFreq, minFreq: minFreq)
     if inferOnsets {
@@ -189,7 +153,7 @@ private func outputToNotesPolyphonic(
     let frameStep = frames.strides[0].intValue
     return frames.withUnsafeBufferPointer(ofType: Float.self) { pFrames in
         var remainingEnergy = Array(pFrames)
-        var noteEvents: [Note] = []
+        var noteEvents: [InnerNote] = []
         var onsetIdxs = findValidOnsetIdxsTurbo(onsets: onsets, thresh: onsetThresh)
         onsetIdxs.reverse()
 
@@ -354,8 +318,8 @@ private func midiPitchToContourBin(_ pitch: Int) -> Float {
     return Float(12.0) * Float(Constants.contoursBinsPerSemitone) * log2(hz / Constants.annotationsBaseFrequency)
 }
 
-private func getPitchBends(contours: MLMultiArray, noteEvents: [Note], nBinsTolerance: Int = 25) -> [(
-    Note, PitchBend?
+private func getPitchBends(contours: MLMultiArray, noteEvents: [InnerNote], nBinsTolerance: Int = 25) -> [(
+    InnerNote, PitchBend?
 )] {
     let contourCols = contours.strides[0].intValue
     return contours.withUnsafeBufferPointer(ofType: Float.self) { pcontours in
@@ -373,7 +337,7 @@ private func getPitchBends(contours: MLMultiArray, noteEvents: [Note], nBinsTole
             var maxValue: Float = 0
             var maxIdx: vDSP_Length = 0
             var mulLength: vDSP_Length
-            var ret: [(Note, PitchBend?)] = []
+            var ret: [(InnerNote, PitchBend?)] = []
             for note in noteEvents {
                 freqIdx = Int(midiPitchToContourBin(note.2).rounded())
                 freqStartIdx = max(freqIdx - nBinsTolerance, 0)
@@ -410,153 +374,15 @@ private func getPitchBends(contours: MLMultiArray, noteEvents: [Note], nBinsTole
     }
 }
 
-private func dropOpverlappingPitchBends(_ notes: [NotePitchBend]) -> [NotePitchBend] {
-    if notes.isEmpty {
-        return notes
-    }
-    var ret = notes.sorted()
-    for i in 0..<(ret.count - 1) {
-        for j in (i + 1)..<ret.count {
-            if ret[j].startTime >= ret[i].endTime {
-                break
-            }
-            ret[i].pitchBend = nil
-            ret[j].pitchBend = nil
-        }
-    }
-    return ret
-}
-
-private func getMidiEventScore(_ event: MIDIEvent) -> Int {
-    switch event {
-    case .noteOn:
-        let v = event.midi1RawDataBytes()!
-        return Int(v.0!) * 1000 + Int(v.1!)
-    case .pitchBend:
-        return 2
-    case .programChange:
-        return 1
-    default:
-        return 0
-    }
-}
-
-private func notesToMidi(notes: [NotePitchBend], multiplePitchBends: Bool, midiTempo: Int, midiProgram: Int) -> MIDIFile
-{
-    let notes = multiplePitchBends ? notes : dropOpverlappingPitchBends(notes)
-
-    let tm = MidiTempoMap(bpm: UInt(midiTempo))
-    // pitch: (ticks, events)
-    var tracks: [Int: [(UInt32, MIDIEvent)]] = [:]
-    var orderedTrackIdxs: [Int] = []
-    let defaultProgram = UInt7(midiProgram)
-    var channelCounter = -1
-    var trackIdx: Int
-    var channel: UInt4
-    var vel: UInt7
-    let fNPitchBendTicks = Float(Constants.nPitchBendTicks)
-    let pitchBendTicksScalar = Float(4096) / Float(Constants.contoursBinsPerSemitone)
-    let bendRange = (Float(0)...Float(Constants.nPitchBendTicks * 2 - 1))
-    for n in notes {
-        trackIdx = multiplePitchBends ? n.pitch : 0
-
-        if tracks[trackIdx] == nil {
-            channelCounter += 1
-            channel = UInt4(channelCounter % 16)
-            orderedTrackIdxs.append(trackIdx)
-            tracks[trackIdx] = [
-                (0, .programChange(program: defaultProgram, channel: channel))
-            ]
-        }
-
-        channel = UInt4(channelCounter % 16)
-
-        // note on/ note off
-        vel = UInt7((127 * n.amplitude).rounded())
-        tracks[trackIdx]!.append(
-            (
-                tm.secsToTicks(n.startTime),
-                .noteOn(.init(note: UInt7(n.pitch), velocity: .midi1(vel), channel: channel))
-            )
-        )
-
-        // pitch bend
-        if n.pitchBend != nil {
-            let pitchBendTimes = vDSP.ramp(in: n.startTime...n.endTime, count: n.pitchBend!.count)
-            var fticks = vDSP.multiply(pitchBendTicksScalar, n.pitchBend!)
-            // 这里不同于 pretty midi [-8192, 8191] 的 bend pitch 范围
-            // MIDIKit 可用的是GM 中的设定的 [0, 0x3fff] 所以，进行了一个转换
-            vForce.nearestInteger(fticks, result: &fticks)
-            vDSP.add(fNPitchBendTicks, fticks, result: &fticks)
-            vDSP.clip(fticks, to: bendRange, result: &fticks)
-            let pitchBendMidiTicks =
-                vDSP.floatingPointToInteger(fticks, integerType: Int32.self, rounding: .towardNearestInteger)
-            for (pbTime, pbTick) in zip(pitchBendTimes, pitchBendMidiTicks) {
-                tracks[trackIdx]!.append(
-                    (
-                        tm.secsToTicks(pbTime),
-                        .pitchBend(.init(value: .midi1(UInt14(Int(pbTick))), channel: channel))
-                    ))
-            }
-        }
-
-        tracks[trackIdx]!.append(
-            (
-                tm.secsToTicks(n.endTime),
-                .noteOn(.init(note: UInt7(n.pitch), velocity: .midi1(0), channel: channel))
-            )
-        )
-    }
-
-    var mid = MIDIFile(
-        format: .multipleTracksSynchronous,
-        timeBase: .musical(ticksPerQuarterNote: tm.tpq),
-        chunks: [
-            .track([
-                .tempo(bpm: Double(tm.bpm)),
-                .timeSignature(numerator: 4, denominator: 2),
-            ])
-        ]
-    )
-
-    for i in orderedTrackIdxs {
-        // 将 tracks 中的数据按照 ticks 排序
-        tracks[i]!.sort { l, r in
-            if l.0 < r.0 {
-                return true
-            }
-            if l.0 > r.0 {
-                return false
-            }
-            // 相等的情况下，需要判定类型
-            return getMidiEventScore(l.1) <= getMidiEventScore(r.1)
-        }
-        // 生成 MIDIFileEvent
-        var lastTicks: UInt32 = 0
-        var events: [MIDIFileEvent] = []
-        for i in tracks[i]! {
-            lastTicks = i.0 - lastTicks
-            events.append(i.1.smfEvent(delta: .ticks(lastTicks))!)
-            lastTicks = i.0
-        }
-        mid.chunks.append(.track(events))
-    }
-
-    return mid
-}
-
-public class NoteCreation: @unchecked Sendable {
+public actor NotesConverter {
     public struct Opt: Equatable, Sendable {
         public var onsetThreshold: Float  // 分割 - 合并 音符的力度，取值范围 [0.05, 0.95]
         public var frameThreshold: Float  // 更多 - 更少 由模型推理生成音符的置信度，取值范围 [0.05, 0.95]
         public var minNoteLength: Int  // 最短音符时长 [3, 50] ms
         public var minFreq: Float?  // 音调下限，单位 Hz [0, 2000]
         public var maxFreq: Float?  // 音调上限，单位 Hz [40, 3000]
-        public var midiTempo: Int  // midi 文件使用的默认拍速 [24, 224]
-        public var midiProgram: Int  // midi 文件使用的默认乐器号
         public var inferOnsets: Bool
         public var includePitchBends: Bool  // 弯音检测
-        public var multiplePitchBends: Bool  // 每个 pitch 一个单独的音轨
         public var melodiaTrick: Bool  // 泛音检测
         public var energyThreshold: Int  // 能量限制
 
@@ -566,11 +392,8 @@ public class NoteCreation: @unchecked Sendable {
             minNoteLength: Int = 11,
             minFreq: Float? = nil,
             maxFreq: Float? = nil,
-            midiTempo: Int = 120,
-            midiProgram: Int = 4,
             inferOnsets: Bool = true,
             includePitchBends: Bool = true,
-            multiplePitchBends: Bool = false,
             melodiaTrick: Bool = true,
             energyThreshold: Int = 11
         ) {
@@ -579,11 +402,8 @@ public class NoteCreation: @unchecked Sendable {
             self.minNoteLength = minNoteLength
             self.minFreq = minFreq
             self.maxFreq = maxFreq
-            self.midiTempo = midiTempo
-            self.midiProgram = midiProgram
             self.inferOnsets = inferOnsets
             self.includePitchBends = includePitchBends
-            self.multiplePitchBends = multiplePitchBends
             self.melodiaTrick = melodiaTrick
             self.energyThreshold = energyThreshold
         }
@@ -599,7 +419,7 @@ public class NoteCreation: @unchecked Sendable {
         self.contours = contours
     }
 
-    public func genMidiFile(_ opt: Opt = Opt()) throws -> MIDIFile {
+    public func convert(_ opt: Opt = Opt()) throws -> [Note] {
         let estimatedNotes = outputToNotesPolyphonic(
             frames: notes,
             onsets: onsets,
@@ -613,7 +433,7 @@ public class NoteCreation: @unchecked Sendable {
             energyTol: opt.energyThreshold
         )
 
-        var estimatedNotesWithPitchBend: [(Note, PitchBend?)]
+        var estimatedNotesWithPitchBend: [(InnerNote, PitchBend?)]
         if opt.includePitchBends {
             estimatedNotesWithPitchBend = getPitchBends(contours: contours, noteEvents: estimatedNotes)
         } else {
@@ -623,15 +443,9 @@ public class NoteCreation: @unchecked Sendable {
         }
 
         let times = modelFrameToTime(contours.shape[0].intValue)
-        let notePitchBends = estimatedNotesWithPitchBend.map { v in
-            return NotePitchBend(
+        return estimatedNotesWithPitchBend.map { v in
+            return Note(
                 startTime: times[v.0.0], endTime: times[v.0.1], pitch: v.0.2, amplitude: v.0.3, pitchBend: v.1)
         }
-        return notesToMidi(
-            notes: notePitchBends,
-            multiplePitchBends: opt.multiplePitchBends,
-            midiTempo: opt.midiTempo,
-            midiProgram: opt.midiProgram
-        )
     }
 }
